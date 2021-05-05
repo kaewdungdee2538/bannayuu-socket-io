@@ -1,24 +1,31 @@
 const express = require("express");
 const app = express();
-const http = require("http");
+const fs = require('fs');
 const getParcelHistoryBydID = require('./sos/sos')
 app.get('/',(req,res)=>{
     res.sendFile(__dirname+'/index.html')
 })
 const ApiRoute = require('./utils/config')
 const port = ApiRoute.port;
-//----------------------Https
-// var https = require('https');
-// var server = https.createServer({
-//     key: fs.readFileSync('C:/BinaryProgram/Cert/PriKey.pem'),
-//     cert: fs.readFileSync('C:/BinaryProgram/Cert/Cert.pem'),
-//     ca: fs.readFileSync('C:/BinaryProgram/Cert/FullChain.pem'),
-//     requestCert: false,
-//     rejectUnauthorized: false
-// },app);
-// // var cors = require('cors')
-// // app.use(cors())
 
+//----------------------Https
+var https = require('https');
+var server = https.createServer({
+    key: fs.readFileSync('C:/BinaryProgram/Cert/PriKey.pem'),
+    cert: fs.readFileSync('C:/BinaryProgram/Cert/Cert.pem'),
+    ca: fs.readFileSync('C:/BinaryProgram/Cert/FullChain.pem'),
+    requestCert: false,
+    rejectUnauthorized: false
+},app);
+
+//---------------------Http
+// const server = http.createServer(app);
+// const socket = require("socket.io");
+// const io = socket(server);
+
+/*
+socket io for version 2
+*/
 // // const server = https.createServer(app);
 // const io = require("socket.io")(server, {
 //     handlePreflightRequest: (req, res) => {
@@ -31,18 +38,29 @@ const port = ApiRoute.port;
 //         res.end();
 //     }
 // });
+//---------------------------------------------------------//
 
-//---------------------Http
-const server = http.createServer(app);
-const socket = require("socket.io");
-const io = socket(server);
+/*
+socket io for version 3
+*/
+const io = require("socket.io")(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
+
+
 
 io.on("connection", socket => {
     const ip = socket.handshake.address;
-    console.log('client connect : '+socket.id+'IP : '+ ip +" Date : " + Date.now().toString());
+    console.log("<============================================>")
+    console.log('client connect : '+socket.id+'IP : '+ ip +" Date : " + Date.now());
     socket.emit("socket_id", socket.id);
     socket.on("send_sos", body => {
-        const company_id = 1
+        const company_id = body.company_id;
         let resultForGetLastSosInfo = null;
          getParcelHistoryBydID(company_id) .then((res) => {
             if (res.result) {
@@ -58,6 +76,7 @@ io.on("connection", socket => {
                 }
                 resultForGetLastSosInfo = result
                 console.log('get sos result : '+ JSON.stringify(resultForGetLastSosInfo));
+                console.log("<------------------------------------------>")
             } else {
                 console.log(res.error)
                 const result = {
